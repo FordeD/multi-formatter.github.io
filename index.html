@@ -1,0 +1,1828 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data Formatter — JSON · PHP · YAML · XML · SQL</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0a0e16;
+    --panel:     #111827;
+    --panel-2:   #0d1320;
+    --border:    #232d40;
+    --border-hi: #33415c;
+    --text:      #e6edf3;
+    --muted:     #8b98ad;
+    --accent:    #7c9cff;
+    --accent-2:  #5eead4;
+    --ok:        #3fb950;
+    --err:       #f85149;
+    --radius:    14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+    background:
+      radial-gradient(1100px 520px at 12% -12%, #1c2745 0%, transparent 58%),
+      radial-gradient(900px 480px at 92% 0%, #10323a 0%, transparent 55%),
+      var(--bg);
+    color: var(--text);
+    padding: 22px;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    height: calc(100vh - 44px);
+    min-height: 560px;
+  }
+
+  header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .logo {
+    width: 42px; height: 42px;
+    display: grid; place-items: center;
+    border-radius: 12px; font-size: 20px;
+    background: linear-gradient(140deg, #7c9cff, #5eead4);
+    color: #07101f; font-weight: 800;
+    box-shadow: 0 6px 22px -6px rgba(124,156,255,.65);
+  }
+  h1 { font-size: 19px; font-weight: 650; letter-spacing: .2px; }
+  h1 span { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 8px; }
+
+  .toolbar {
+    background: linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,0));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    position: relative;
+  }
+
+  .field { display: flex; align-items: center; gap: 8px; }
+  .field-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .9px;
+    color: var(--muted); font-weight: 600;
+  }
+
+  .select-wrap { position: relative; }
+  .select-wrap::after {
+    content: ""; position: absolute; right: 11px; top: 50%;
+    width: 6px; height: 6px;
+    border-right: 1.6px solid var(--muted);
+    border-bottom: 1.6px solid var(--muted);
+    transform: translateY(-70%) rotate(45deg);
+    pointer-events: none;
+  }
+  select {
+    appearance: none; -webkit-appearance: none;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 9px;
+    padding: 8px 30px 8px 12px;
+    font-size: 13px; font-weight: 600; font-family: inherit;
+    cursor: pointer; outline: none;
+    transition: border-color .16s, box-shadow .16s;
+    min-width: 104px;
+  }
+  select:hover { border-color: var(--border-hi); }
+  select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,156,255,.16); }
+  option { background: #111827; }
+
+  .spacer { flex: 1 1 auto; }
+
+  button {
+    font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text);
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 9px; padding: 8px 14px; cursor: pointer;
+    transition: background .16s, border-color .16s, transform .08s, box-shadow .16s;
+    display: inline-flex; align-items: center; gap: 7px;
+    white-space: nowrap; user-select: none;
+  }
+  button:hover { border-color: var(--border-hi); background: #141c2c; }
+  button:active { transform: translateY(1px); }
+  button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(124,156,255,.2); }
+
+  button.primary {
+    background: linear-gradient(140deg, #6f92ff, #56d6c0);
+    color: #06121f; border-color: transparent; font-weight: 700;
+    box-shadow: 0 8px 22px -10px rgba(124,156,255,.9);
+  }
+  button.primary:hover { filter: brightness(1.07); }
+
+  button.icon-btn { padding: 8px 11px; font-size: 15px; line-height: 1; }
+
+  .segmented {
+    display: inline-flex; background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 3px; gap: 3px;
+  }
+  .segmented button {
+    border: none; background: transparent;
+    padding: 6px 15px; border-radius: 7px;
+    color: var(--muted); font-size: 12.5px;
+  }
+  .segmented button:hover { background: rgba(255,255,255,.045); color: var(--text); }
+  .segmented button.active {
+    background: linear-gradient(140deg, rgba(124,156,255,.22), rgba(94,234,212,.16));
+    color: var(--text); box-shadow: inset 0 0 0 1px rgba(124,156,255,.35);
+  }
+
+  .check {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12.5px; color: var(--muted); cursor: pointer;
+    user-select: none; padding: 6px 4px;
+  }
+  .check input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+  .check:hover { color: var(--text); }
+
+  .panes {
+    flex: 1 1 auto;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 14px; min-height: 0;
+  }
+
+  .pane {
+    display: flex; flex-direction: column;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; min-height: 0;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .pane:focus-within {
+    border-color: rgba(124,156,255,.45);
+    box-shadow: 0 0 0 3px rgba(124,156,255,.08);
+  }
+
+  .pane-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 14px; border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,.018);
+    font-size: 11.5px; letter-spacing: .8px; text-transform: uppercase;
+    font-weight: 700; color: var(--muted); flex: 0 0 auto;
+  }
+  .pane-head .info { text-transform: none; letter-spacing: 0; font-weight: 500; opacity: .75; }
+
+  textarea {
+    flex: 1 1 auto; width: 100%; resize: none; border: none; outline: none;
+    background: transparent; color: var(--text);
+    font-family: var(--mono); font-size: 13px; line-height: 1.62;
+    padding: 14px 16px; tab-size: 4; white-space: pre; overflow: auto;
+  }
+  textarea::placeholder { color: #4a5769; }
+  textarea[readonly] { color: #c3d0e2; }
+
+  textarea::-webkit-scrollbar { width: 10px; height: 10px; }
+  textarea::-webkit-scrollbar-track { background: transparent; }
+  textarea::-webkit-scrollbar-thumb {
+    background: #26314a; border-radius: 8px; border: 2px solid var(--panel);
+  }
+  textarea::-webkit-scrollbar-thumb:hover { background: #34425f; }
+
+  .status {
+    flex: 0 0 auto; font-size: 12.5px; padding: 9px 15px;
+    border-radius: 11px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--muted);
+    display: flex; align-items: center; gap: 9px; min-height: 38px;
+    transition: border-color .2s, color .2s, background .2s;
+  }
+  .status .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #48566e; flex: 0 0 auto;
+    transition: background .2s, box-shadow .2s;
+  }
+  .status.ok   { color: #a9e6b6; border-color: rgba(63,185,80,.35);  background: rgba(63,185,80,.07); }
+  .status.ok .dot   { background: var(--ok);  box-shadow: 0 0 10px rgba(63,185,80,.8); }
+  .status.err  { color: #ffb4ae; border-color: rgba(248,81,73,.38);  background: rgba(248,81,73,.07); }
+  .status.err .dot  { background: var(--err); box-shadow: 0 0 10px rgba(248,81,73,.8); }
+  .status.busy .dot { background: var(--accent); box-shadow: 0 0 10px rgba(124,156,255,.8); }
+
+  /* ============ HISTORY ============ */
+  .history-wrap { position: relative; display: inline-flex; }
+
+  #historyBtn { position: relative; }
+
+  .history-wrap .badge {
+    display: inline-block;
+    background: rgba(124,156,255,.22);
+    color: #b9cbff;
+    padding: 1px 7px;
+    border-radius: 99px;
+    font-size: 10.5px;
+    font-weight: 700;
+    min-width: 20px;
+    text-align: center;
+    line-height: 1.4;
+    transition: background .15s;
+  }
+  #historyBtn:hover .badge { background: rgba(124,156,255,.35); }
+
+  .history-panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 380px;
+    max-height: min(520px, calc(100vh - 220px));
+    display: none;
+    flex-direction: column;
+    background: linear-gradient(180deg, #131b2b, #0f1727);
+    border: 1px solid var(--border-hi);
+    border-radius: 14px;
+    box-shadow:
+      0 24px 48px -12px rgba(0,0,0,.75),
+      0 0 0 1px rgba(255,255,255,.03) inset;
+    z-index: 200;
+    overflow: hidden;
+    animation: histIn .14s ease-out;
+  }
+  @keyframes histIn {
+    from { opacity: 0; transform: translateY(-6px) scale(.98); }
+    to   { opacity: 1; transform: none; }
+  }
+  .history-panel.open { display: flex; }
+
+  .history-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 12px 11px 15px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,.015);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: .9px;
+    font-weight: 700;
+    color: var(--muted);
+    flex: 0 0 auto;
+  }
+  .history-head .head-actions { display: flex; gap: 6px; align-items: center; }
+  .history-head button {
+    padding: 5px 10px;
+    font-size: 11.5px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 600;
+    border-radius: 7px;
+    gap: 4px;
+  }
+  .history-head .danger:hover {
+    border-color: rgba(248,81,73,.5);
+    color: #ffb4ae;
+    background: rgba(248,81,73,.08);
+  }
+
+  .history-list {
+    overflow-y: auto;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    scrollbar-width: thin;
+  }
+  .history-list::-webkit-scrollbar { width: 8px; }
+  .history-list::-webkit-scrollbar-track { background: transparent; }
+  .history-list::-webkit-scrollbar-thumb {
+    background: #26314a; border-radius: 8px;
+    border: 2px solid transparent; background-clip: padding-box;
+  }
+  .history-list::-webkit-scrollbar-thumb:hover { background: #34425f; background-clip: padding-box; }
+
+  .history-empty {
+    padding: 34px 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12.5px;
+    line-height: 1.65;
+  }
+
+  .history-item {
+    position: relative;
+    padding: 9px 34px 9px 12px;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background .12s, border-color .12s;
+    border: 1px solid transparent;
+  }
+  .history-item:hover {
+    background: rgba(124,156,255,.08);
+    border-color: rgba(124,156,255,.18);
+  }
+  .history-item.active {
+    background: rgba(94,234,212,.08);
+    border-color: rgba(94,234,212,.24);
+  }
+
+  .history-meta {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+    font-size: 10.5px;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .history-fmt {
+    font-weight: 700;
+    color: #a7bcff;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .2px;
+  }
+  .history-mode {
+    display: inline-block;
+    padding: 1px 6px;
+    margin-left: 6px;
+    border-radius: 4px;
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    background: rgba(94,234,212,.14);
+    color: #6ee7d2;
+    vertical-align: 1px;
+  }
+  .history-mode.min {
+    background: rgba(255,184,108,.14);
+    color: #ffc47e;
+  }
+  .history-time { font-size: 10.5px; white-space: nowrap; }
+  .history-preview {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: #b9c5d6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.5;
+  }
+
+  .history-del {
+    position: absolute;
+    top: 50%;
+    right: 7px;
+    transform: translateY(-50%);
+    width: 24px; height: 24px;
+    padding: 0;
+    border-radius: 6px;
+    font-size: 15px;
+    line-height: 1;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    opacity: 0;
+    transition: opacity .12s, background .12s, color .12s;
+  }
+  .history-item:hover .history-del { opacity: .85; }
+  .history-del:hover {
+    background: rgba(248,81,73,.16);
+    color: var(--err);
+    border: none;
+    opacity: 1 !important;
+  }
+  .history-del:active { transform: translateY(-50%) scale(.94); }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px) {
+    body { padding: 12px; }
+    .app { height: auto; min-height: 0; }
+    .panes { grid-template-columns: 1fr; }
+    .pane { height: 44vh; }
+    .toolbar { padding: 10px; }
+    .spacer { display: none; }
+    .history-panel {
+      position: fixed;
+      top: auto;
+      bottom: 12px;
+      left: 12px;
+      right: 12px;
+      width: auto;
+      max-height: 62vh;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <header>
+    <div class="logo">◈</div>
+    <h1>Data Formatter <span>JSON · PHP · YAML · XML · SQL</span></h1>
+  </header>
+
+  <div class="toolbar">
+    <div class="field">
+      <span class="field-label">Из</span>
+      <div class="select-wrap">
+        <select id="inFmt">
+          <option value="json">JSON</option>
+          <option value="php">PHP</option>
+          <option value="yaml">YAML</option>
+          <option value="xml">XML</option>
+          <option value="sql">SQL</option>
+        </select>
+      </div>
+    </div>
+
+    <button id="swap" class="icon-btn" title="Поменять форматы и содержимое">⇄</button>
+
+    <div class="field">
+      <span class="field-label">В</span>
+      <div class="select-wrap">
+        <select id="outFmt">
+          <option value="json">JSON</option>
+          <option value="php">PHP</option>
+          <option value="yaml">YAML</option>
+          <option value="xml">XML</option>
+          <option value="sql">SQL</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="segmented" id="modeSeg">
+      <button data-mode="pretty" class="active">Формат</button>
+      <button data-mode="min">Мини</button>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="primary" id="run">▶ Обработать</button>
+    <button id="copy">⧉ Копировать</button>
+    <button id="sample">✦ Пример</button>
+    <button id="clear">✕ Очистить</button>
+
+    <div class="history-wrap">
+      <button id="historyBtn" title="Открыть историю">
+        ⏱ История <span class="badge" id="historyBadge">0</span>
+      </button>
+      <div class="history-panel" id="historyPanel">
+        <div class="history-head">
+          <span>История</span>
+          <div class="head-actions">
+            <button class="danger" id="clearHistory" title="Удалить всю историю">Очистить всё</button>
+          </div>
+        </div>
+        <div class="history-list" id="historyList"></div>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+    <label class="check"><input type="checkbox" id="auto"> Авто-обработка</label>
+  </div>
+
+  <div class="panes">
+    <div class="pane">
+      <div class="pane-head"><span>Вход</span><span class="info" id="inInfo"></span></div>
+      <textarea id="input" spellcheck="false" placeholder="Вставьте данные сюда…  (Ctrl + Enter — обработать)"></textarea>
+    </div>
+    <div class="pane">
+      <div class="pane-head"><span>Результат</span><span class="info" id="outInfo"></span></div>
+      <textarea id="output" spellcheck="false" placeholder="Здесь появится результат…"></textarea>
+    </div>
+  </div>
+
+  <div class="status" id="status"><span class="dot"></span><span id="statusText">Готово к работе</span></div>
+
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+ *  УТИЛИТЫ
+ * ============================================================ */
+
+const isPlainObject = v => v !== null && typeof v === "object" && !Array.isArray(v);
+const isScalar = v => v === null || typeof v !== "object";
+
+/* ============================================================
+ *  JSON
+ * ============================================================ */
+
+const JsonCodec = {
+  parse(text) { return JSON.parse(text); },
+  serialize(value, pretty) {
+    return pretty ? JSON.stringify(value, null, 2) : JSON.stringify(value);
+  }
+};
+
+/* ============================================================
+ *  PHP
+ * ============================================================ */
+
+const PHP_NUM_RE = /-?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/y;
+
+function phpTokenize(src) {
+  const tokens = [];
+  const n = src.length;
+  let i = 0;
+
+  while (i < n) {
+    const c = src[i];
+
+    if (c === " " || c === "\t" || c === "\n" || c === "\r") { i++; continue; }
+    if (c === "/" && src[i + 1] === "/") { while (i < n && src[i] !== "\n") i++; continue; }
+    if (c === "#") { while (i < n && src[i] !== "\n") i++; continue; }
+    if (c === "/" && src[i + 1] === "*") {
+      i += 2;
+      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) i++;
+      i += 2; continue;
+    }
+
+    if (c === "'") {
+      i++;
+      let s = "";
+      while (i < n) {
+        if (src[i] === "\\") { const nx = src[i + 1]; if (nx === "'" || nx === "\\") { s += nx; i += 2; } else { s += "\\" + nx; i += 2; } }
+        else if (src[i] === "'") { i++; break; }
+        else s += src[i++];
+      }
+      tokens.push({ t: "str", v: s }); continue;
+    }
+
+    if (c === '"') {
+      i++;
+      let s = "";
+      while (i < n) {
+        if (src[i] === "\\") {
+          const nx = src[i + 1];
+          const map = { n: "\n", t: "\t", r: "\r", '"': '"', "\\": "\\", $: "$", "0": "\0" };
+          if (Object.prototype.hasOwnProperty.call(map, nx)) { s += map[nx]; i += 2; } else { s += nx; i += 2; }
+        } else if (src[i] === '"') { i++; break; }
+        else s += src[i++];
+      }
+      tokens.push({ t: "str", v: s }); continue;
+    }
+
+    PHP_NUM_RE.lastIndex = i;
+    const nm = PHP_NUM_RE.exec(src);
+    if (nm && nm.index === i && nm[0].length > 0) { tokens.push({ t: "num", v: parseFloat(nm[0]) }); i += nm[0].length; continue; }
+
+    if (/[A-Za-z_\\]/.test(c)) {
+      let j = i;
+      while (j < n && /[A-Za-z0-9_\\]/.test(src[j])) j++;
+      tokens.push({ t: "ident", v: src.slice(i, j) }); i = j; continue;
+    }
+
+    if (c === "=" && src[i + 1] === ">") { tokens.push({ t: "sym", v: "=>" }); i += 2; continue; }
+    if ("[](),;={}".includes(c)) { tokens.push({ t: "sym", v: c }); i++; continue; }
+    if (c === "$") { i++; continue; }
+    if (src.slice(i, i + 5).toLowerCase() === "<?php") { i += 5; continue; }
+    if (c === "<" && src[i + 1] === "?") { i += 2; continue; }
+    if (c === "?" && src[i + 1] === ">") { i += 2; continue; }
+    i++;
+  }
+  return tokens;
+}
+
+function phpParse(src) {
+  const tokens = phpTokenize(src);
+  let pos = 0;
+  const peek = (o = 0) => tokens[pos + o];
+  const next = () => tokens[pos++];
+
+  function expectSym(sym) {
+    const t = next();
+    if (!t || t.t !== "sym" || t.v !== sym) throw new Error(`PHP: ожидался символ "${sym}"`);
+  }
+
+  function parseArrayBody(endSym) {
+    const items = [];
+    for (;;) {
+      const t = peek();
+      if (!t) throw new Error("PHP: не закрыт массив");
+      if (t.t === "sym" && t.v === endSym) { next(); break; }
+      if (t.t === "sym" && t.v === ",") { next(); continue; }
+      if (t.t === "sym" && (t.v === "]" || t.v === ")")) { next(); break; }
+
+      let key = null;
+      const t2 = peek(1);
+      if ((t.t === "str" || t.t === "num") && t2 && t2.t === "sym" && t2.v === "=>") { key = String(t.v); pos += 2; }
+
+      const val = parseValue();
+      items.push({ key, value: val });
+    }
+
+    if (!items.some(it => it.key !== null)) return items.map(it => it.value);
+    const obj = {};
+    let auto = 0;
+    for (const it of items) { if (it.key !== null) obj[it.key] = it.value; else obj[auto++] = it.value; }
+    return obj;
+  }
+
+  function parseValue() {
+    const t = next();
+    if (!t) throw new Error("PHP: неожиданный конец выражения");
+    if (t.t === "str") return t.v;
+    if (t.t === "num") return t.v;
+
+    if (t.t === "ident") {
+      const low = t.v.toLowerCase();
+      if (low === "true") return true;
+      if (low === "false") return false;
+      if (low === "null") return null;
+      if (low === "array") { expectSym("("); return parseArrayBody(")"); }
+      if (low === "return" || low === "echo") return parseValue();
+      const nx = peek();
+      if (nx && nx.t === "sym" && nx.v === "=") { next(); return parseValue(); }
+      throw new Error(`PHP: неизвестный идентификатор "${t.v}"`);
+    }
+    if (t.t === "sym") {
+      if (t.v === "[") return parseArrayBody("]");
+      if (t.v === "(") return parseArrayBody(")");
+    }
+    throw new Error(`PHP: неожиданный токен "${t.v}"`);
+  }
+
+  while (pos < tokens.length) {
+    const t = peek();
+    if (t.t === "ident" && /^(return|echo)$/i.test(t.v)) { pos++; continue; }
+    if (t.t === "ident" && peek(1) && peek(1).t === "sym" && peek(1).v === "=") { pos += 2; continue; }
+    break;
+  }
+  return parseValue();
+}
+
+function phpQuote(s) { return "'" + String(s).replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'"; }
+
+function phpSerialize(value, pretty) { return phpValue(value, pretty ? 0 : -1); }
+
+function phpValue(v, level) {
+  const pretty = level >= 0;
+  const pad = pretty ? "    ".repeat(level) : "";
+  const padIn = pretty ? "    ".repeat(level + 1) : "";
+  const nl = pretty ? "\n" : "";
+
+  if (v === null || v === undefined) return "null";
+  if (typeof v === "boolean") return v ? "true" : "false";
+  if (typeof v === "number") return Number.isFinite(v) ? String(v) : "null";
+  if (typeof v === "string") return phpQuote(v);
+
+  if (Array.isArray(v)) {
+    if (v.length === 0) return "[]";
+    const items = v.map(item => padIn + phpValue(item, pretty ? level + 1 : -1));
+    return "[" + nl + items.join("," + nl) + nl + pad + "]";
+  }
+  if (isPlainObject(v)) {
+    const keys = Object.keys(v);
+    if (keys.length === 0) return "[]";
+    const items = keys.map(k => {
+      const key = /^-?\d+$/.test(k) ? k : phpQuote(k);
+      return padIn + key + (pretty ? " => " : "=>") + phpValue(v[k], pretty ? level + 1 : -1);
+    });
+    return "[" + nl + items.join("," + nl) + nl + pad + "]";
+  }
+  return "null";
+}
+
+/* ============================================================
+ *  YAML
+ * ============================================================ */
+
+function yamlStripComment(line) {
+  let inS = false, inD = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === "'" && !inD) inS = !inS;
+    else if (c === '"' && !inS) { if (inD && line[i - 1] === "\\") continue; inD = !inD; }
+    else if (c === "#" && !inS && !inD) { if (i === 0 || /\s/.test(line[i - 1])) return line.slice(0, i); }
+  }
+  return line;
+}
+
+function yamlUnquote(s) {
+  if (s.length < 2) return s;
+  const q = s[0];
+  if (q === '"' && s[s.length - 1] === '"') {
+    let out = "";
+    for (let i = 1; i < s.length - 1; i++) {
+      if (s[i] === "\\") {
+        const nx = s[i + 1];
+        const map = { n: "\n", t: "\t", r: "\r", '"': '"', "\\": "\\", "/": "/", b: "\b", f: "\f" };
+        if (Object.prototype.hasOwnProperty.call(map, nx)) { out += map[nx]; i++; } else out += nx, i++;
+      } else out += s[i];
+    }
+    return out;
+  }
+  if (q === "'" && s[s.length - 1] === "'") return s.slice(1, -1).replace(/''/g, "'");
+  return s;
+}
+
+function yamlMatchKey(text) {
+  let inS = false, inD = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === "'" && !inD) inS = !inS;
+    else if (c === '"' && !inS) { if (inD && text[i - 1] === "\\") continue; inD = !inD; }
+    else if (c === ":" && !inS && !inD) {
+      if (i + 1 >= text.length || text[i + 1] === " ") {
+        let key = text.slice(0, i).trim();
+        if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) key = yamlUnquote(key);
+        return { key, rest: text.slice(i + 1).trim() };
+      }
+    }
+  }
+  return null;
+}
+
+function yamlParseScalar(s) {
+  s = s.trim();
+  if (s === "") return null;
+  if (s[0] === "[" || s[0] === "{") return yamlParseFlow(s);
+  if (s[0] === '"' || s[0] === "'") return yamlUnquote(s);
+  const low = s.toLowerCase();
+  if (low === "null" || s === "~") return null;
+  if (low === "true") return true;
+  if (low === "false") return false;
+  if (/^-?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(s)) return parseFloat(s);
+  return s;
+}
+
+function yamlParseFlow(str) {
+  let i = 0; const n = str.length;
+  const skipWs = () => { while (i < n && /\s/.test(str[i])) i++; };
+
+  function parseQuoted() {
+    const q = str[i]; let out = ""; i++;
+    while (i < n) {
+      if (q === '"' && str[i] === "\\") { out += str[i + 1]; i += 2; continue; }
+      if (str[i] === q) { if (q === "'" && str[i + 1] === "'") { out += "'"; i += 2; continue; } i++; break; }
+      out += str[i++];
+    }
+    return out;
+  }
+
+  function parseVal() {
+    skipWs();
+    const c = str[i];
+    if (c === "[") {
+      i++; const arr = []; skipWs();
+      if (str[i] === "]") { i++; return arr; }
+      for (;;) {
+        arr.push(parseVal()); skipWs();
+        if (str[i] === ",") { i++; continue; }
+        if (str[i] === "]") { i++; break; }
+        throw new Error("YAML: ошибка в flow-последовательности");
+      }
+      return arr;
+    }
+    if (c === "{") {
+      i++; const obj = {}; skipWs();
+      if (str[i] === "}") { i++; return obj; }
+      for (;;) {
+        skipWs();
+        let key;
+        if (str[i] === '"' || str[i] === "'") key = parseQuoted();
+        else { const st = i; while (i < n && !",:}".includes(str[i])) i++; key = str.slice(st, i).trim(); }
+        skipWs(); if (str[i] === ":") i++;
+        obj[key] = parseVal(); skipWs();
+        if (str[i] === ",") { i++; continue; }
+        if (str[i] === "}") { i++; break; }
+        throw new Error("YAML: ошибка в flow-объекте");
+      }
+      return obj;
+    }
+    if (c === '"' || c === "'") return parseQuoted();
+    const st = i;
+    while (i < n && !",]}:".includes(str[i])) i++;
+    return yamlParseScalar(str.slice(st, i));
+  }
+  return parseVal();
+}
+
+function yamlParse(src) {
+  const rawLines = String(src).replace(/\r\n?/g, "\n").split("\n");
+  const lines = [];
+  for (let raw of rawLines) {
+    raw = raw.replace(/^\t+/, m => "  ".repeat(m.length));
+    const stripped = yamlStripComment(raw);
+    if (!stripped.trim()) continue;
+    const t = stripped.trim();
+    if (t === "---" || t === "...") continue;
+    lines.push({ indent: stripped.length - stripped.trimStart().length, text: t });
+  }
+  if (lines.length === 0) return null;
+
+  let pos = 0;
+
+  function parseBlock(indent) {
+    if (pos >= lines.length) return null;
+    const line = lines[pos];
+    if (line.indent < indent) return null;
+    if (line.text === "-" || line.text.startsWith("- ")) return parseSeq(line.indent);
+    return parseMap(line.indent);
+  }
+
+  function parseSeq(indent) {
+    const arr = [];
+    while (pos < lines.length && lines[pos].indent === indent && (lines[pos].text === "-" || lines[pos].text.startsWith("- "))) {
+      const line = lines[pos];
+      const rest = line.text.slice(1).trim();
+      pos++;
+      if (rest === "") {
+        if (pos < lines.length && lines[pos].indent > indent) arr.push(parseBlock(lines[pos].indent));
+        else arr.push(null);
+      } else if (yamlMatchKey(rest)) {
+        lines.splice(pos, 0, { indent: indent + 2, text: rest });
+        arr.push(parseBlock(indent + 2));
+      } else {
+        arr.push(yamlParseScalar(rest));
+      }
+    }
+    return arr;
+  }
+
+  function parseMap(indent) {
+    const obj = {};
+    while (pos < lines.length && lines[pos].indent === indent) {
+      const line = lines[pos];
+      if (line.text === "-" || line.text.startsWith("- ")) break;
+      const mk = yamlMatchKey(line.text);
+      if (!mk) throw new Error(`YAML: не удалось разобрать строку «${line.text}»`);
+      pos++;
+      const { key, rest } = mk;
+      if (rest === "") {
+        if (pos < lines.length && lines[pos].indent > indent) obj[key] = parseBlock(lines[pos].indent);
+        else obj[key] = null;
+      } else if (rest[0] === "|" || rest[0] === ">") {
+        const chunks = [];
+        while (pos < lines.length && lines[pos].indent > indent) { chunks.push(lines[pos].text); pos++; }
+        obj[key] = chunks.join(rest[0] === "|" ? "\n" : " ");
+      } else {
+        obj[key] = yamlParseScalar(rest);
+      }
+    }
+    return obj;
+  }
+  return parseBlock(lines[0].indent);
+}
+
+const YAML_PLAIN_SAFE = /^[^\s\-?:,\[\]{}#&*!|>'"%@`][^\n]*$/;
+
+function yamlScalar(v) {
+  if (v === null || v === undefined) return "null";
+  if (typeof v === "boolean") return v ? "true" : "false";
+  if (typeof v === "number") return Number.isFinite(v) ? String(v) : "null";
+  const s = String(v);
+  if (s === "") return '""';
+  const low = s.toLowerCase();
+  const special = low === "null" || low === "true" || low === "false" || low === "~" ||
+    /^-?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(s);
+  const needsQuote = special || !YAML_PLAIN_SAFE.test(s) || s !== s.trim() ||
+    /:\s/.test(s) || s.endsWith(":") || / #/.test(s) || /[\n\r\t]/.test(s);
+  return needsQuote ? JSON.stringify(s) : s;
+}
+
+function yamlKey(k) {
+  const s = String(k);
+  if (s === "" || !YAML_PLAIN_SAFE.test(s) || /:\s/.test(s) || s.endsWith(":") || /[\n\r\t]/.test(s)) return JSON.stringify(s);
+  return s;
+}
+
+function yamlSerialize(value, pretty) {
+  if (!pretty) return yamlFlow(value);
+  return yamlLines(value, 0).join("\n");
+}
+
+function yamlFlow(v) {
+  if (Array.isArray(v)) return "[" + v.map(yamlFlow).join(", ") + "]";
+  if (isPlainObject(v)) {
+    return "{" + Object.entries(v).map(([k, val]) => yamlKey(k) + ": " + yamlFlow(val)).join(", ") + "}";
+  }
+  return yamlScalar(v);
+}
+
+function yamlLines(value, indent) {
+  const pad = "  ".repeat(indent);
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return [pad + "[]"];
+    const out = [];
+    for (const item of value) {
+      if (isScalar(item)) out.push(pad + "- " + yamlScalar(item));
+      else if (Array.isArray(item) && item.length === 0) out.push(pad + "- []");
+      else if (isPlainObject(item) && Object.keys(item).length === 0) out.push(pad + "- {}");
+      else {
+        const sub = yamlLines(item, indent + 1);
+        sub[0] = pad + "- " + sub[0].slice((indent + 1) * 2);
+        out.push(...sub);
+      }
+    }
+    return out;
+  }
+
+  if (isPlainObject(value)) {
+    const keys = Object.keys(value);
+    if (keys.length === 0) return [pad + "{}"];
+    const out = [];
+    for (const k of keys) {
+      const val = value[k];
+      const keyStr = yamlKey(k);
+      if (isScalar(val)) out.push(pad + keyStr + ": " + yamlScalar(val));
+      else if (Array.isArray(val) && val.length === 0) out.push(pad + keyStr + ": []");
+      else if (isPlainObject(val) && Object.keys(val).length === 0) out.push(pad + keyStr + ": {}");
+      else { out.push(pad + keyStr + ":"); out.push(...yamlLines(val, indent + 1)); }
+    }
+    return out;
+  }
+  return [pad + yamlScalar(value)];
+}
+
+/* ============================================================
+ *  XML
+ * ============================================================ */
+
+function xmlEscapeText(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function xmlEscapeAttr(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;"); }
+
+function xmlNodeToJs(node) {
+  const obj = {};
+  for (const attr of Array.from(node.attributes || [])) obj["@" + attr.name] = attr.value;
+
+  const children = Array.from(node.children || []);
+  const text = Array.from(node.childNodes || []).filter(n => n.nodeType === 3).map(n => n.nodeValue).join("").trim();
+
+  if (children.length === 0) {
+    if (Object.keys(obj).length === 0) return text;
+    if (text) obj["#text"] = text;
+    return obj;
+  }
+
+  for (const child of children) {
+    const name = child.nodeName;
+    const val = xmlNodeToJs(child);
+    if (Object.prototype.hasOwnProperty.call(obj, name)) {
+      if (!Array.isArray(obj[name])) obj[name] = [obj[name]];
+      obj[name].push(val);
+    } else obj[name] = val;
+  }
+  if (text) obj["#text"] = text;
+  return obj;
+}
+
+function xmlParse(src) {
+  const doc = new DOMParser().parseFromString(String(src), "application/xml");
+  const errNode = doc.getElementsByTagName("parsererror")[0] ||
+    (doc.documentElement && doc.documentElement.nodeName === "parsererror" ? doc.documentElement : null);
+  if (errNode) {
+    const msg = (errNode.textContent || "некорректный XML").trim().split("\n")[0];
+    throw new Error("XML: " + msg);
+  }
+  const root = doc.documentElement;
+  if (!root) throw new Error("XML: пустой документ");
+  return { [root.nodeName]: xmlNodeToJs(root) };
+}
+
+function xmlSerialize(value, pretty) {
+  if (!isPlainObject(value)) throw new Error("XML: корнем должен быть объект вида { rootTag: { ... } }");
+  const keys = Object.keys(value);
+  if (keys.length !== 1) throw new Error("XML: корневой объект должен содержать ровно один ключ — имя корневого тега");
+  const lines = [];
+  xmlBuild(keys[0], value[keys[0]], 0, lines, pretty);
+  return lines.join(pretty ? "\n" : "");
+}
+
+function xmlBuild(tag, value, level, lines, pretty) {
+  const pad = pretty ? "  ".repeat(level) : "";
+
+  if (Array.isArray(value)) { for (const item of value) xmlBuild(tag, item, level, lines, pretty); return; }
+
+  if (isPlainObject(value)) {
+    let attrs = "";
+    let text = "";
+    const children = [];
+    for (const [k, v] of Object.entries(value)) {
+      if (k.startsWith("@")) attrs += ` ${k.slice(1)}="${xmlEscapeAttr(v)}"`;
+      else if (k === "#text") text = xmlEscapeText(v);
+      else children.push([k, v]);
+    }
+    if (children.length === 0) {
+      if (text === "") lines.push(`${pad}<${tag}${attrs}/>`);
+      else lines.push(`${pad}<${tag}${attrs}>${text}</${tag}>`);
+      return;
+    }
+    lines.push(`${pad}<${tag}${attrs}>`);
+    if (text) lines.push((pretty ? "  ".repeat(level + 1) : "") + text);
+    for (const [k, v] of children) xmlBuild(k, v, level + 1, lines, pretty);
+    lines.push(`${pad}</${tag}>`);
+    return;
+  }
+
+  if (value === null || value === undefined) { lines.push(`${pad}<${tag}/>`); return; }
+  lines.push(`${pad}<${tag}>${xmlEscapeText(value)}</${tag}>`);
+}
+
+/* ============================================================
+ *  SQL
+ * ============================================================ */
+
+function sqlTokenize(src) {
+  const tokens = [];
+  const n = src.length;
+  let i = 0;
+
+  while (i < n) {
+    const c = src[i];
+
+    if (c === " " || c === "\t" || c === "\n" || c === "\r") { i++; continue; }
+
+    if (c === "-" && src[i + 1] === "-") {
+      let j = i; while (j < n && src[j] !== "\n") j++;
+      tokens.push({ t: "comment", v: src.slice(i, j) }); i = j; continue;
+    }
+    if (c === "/" && src[i + 1] === "*") {
+      let j = i + 2;
+      while (j < n && !(src[j] === "*" && src[j + 1] === "/")) j++;
+      j = Math.min(j + 2, n);
+      tokens.push({ t: "comment", v: src.slice(i, j) }); i = j; continue;
+    }
+    if (c === "'") {
+      let j = i + 1;
+      while (j < n) {
+        if (src[j] === "'" && src[j + 1] === "'") { j += 2; continue; }
+        if (src[j] === "'") { j++; break; }
+        j++;
+      }
+      tokens.push({ t: "string", v: src.slice(i, j) }); i = j; continue;
+    }
+    if (c === '"') {
+      let j = i + 1; while (j < n && src[j] !== '"') j++;
+      j = Math.min(j + 1, n);
+      tokens.push({ t: "ident", v: src.slice(i, j) }); i = j; continue;
+    }
+    if (c === "`") {
+      let j = i + 1; while (j < n && src[j] !== "`") j++;
+      j = Math.min(j + 1, n);
+      tokens.push({ t: "ident", v: src.slice(i, j) }); i = j; continue;
+    }
+    if (/[0-9]/.test(c) || (c === "." && /[0-9]/.test(src[i + 1] || ""))) {
+      let j = i, seenE = false;
+      while (j < n) {
+        const ch = src[j];
+        if (/[0-9]/.test(ch)) { j++; continue; }
+        if (ch === "." && !seenE) { j++; continue; }
+        if ((ch === "e" || ch === "E") && !seenE) {
+          seenE = true; j++;
+          if (src[j] === "+" || src[j] === "-") j++;
+          continue;
+        }
+        break;
+      }
+      tokens.push({ t: "number", v: src.slice(i, j) }); i = j; continue;
+    }
+    if (/[A-Za-z_@$#]/.test(c)) {
+      let j = i;
+      while (j < n && /[A-Za-z0-9_@$#]/.test(src[j])) j++;
+      tokens.push({ t: "word", v: src.slice(i, j) }); i = j; continue;
+    }
+    const three = src.slice(i, i + 3);
+    const two = src.slice(i, i + 2);
+    if (["<=>"].includes(three)) { tokens.push({ t: "op", v: three }); i += 3; continue; }
+    if (["<>", "<=", ">=", "!=", "||", "&&", "::", "->", "=>"].includes(two)) { tokens.push({ t: "op", v: two }); i += 2; continue; }
+    if ("(),;.+-*/%=<>!&|^~".includes(c)) { tokens.push({ t: "punct", v: c }); i++; continue; }
+    i++;
+  }
+  return tokens;
+}
+
+const SQL_MULTI_KEYWORDS = [
+  ["LEFT", "OUTER", "JOIN"],
+  ["RIGHT", "OUTER", "JOIN"],
+  ["FULL", "OUTER", "JOIN"],
+  ["LEFT", "JOIN"],
+  ["RIGHT", "JOIN"],
+  ["FULL", "JOIN"],
+  ["INNER", "JOIN"],
+  ["CROSS", "JOIN"],
+  ["INSERT", "INTO"],
+  ["DELETE", "FROM"],
+  ["GROUP", "BY"],
+  ["ORDER", "BY"],
+  ["UNION", "ALL"],
+  ["IS", "NOT"],
+];
+
+function sqlCombineMulti(tokens) {
+  const out = [];
+  let i = 0;
+  while (i < tokens.length) {
+    let matched = false;
+    for (const seq of SQL_MULTI_KEYWORDS) {
+      if (i + seq.length > tokens.length) continue;
+      let ok = true;
+      for (let j = 0; j < seq.length; j++) {
+        const tok = tokens[i + j];
+        if (tok.t !== "word" || tok.v.toUpperCase() !== seq[j]) { ok = false; break; }
+      }
+      if (ok) { out.push({ t: "kw", v: seq.join(" ") }); i += seq.length; matched = true; break; }
+    }
+    if (!matched) { out.push(tokens[i]); i++; }
+  }
+  return out;
+}
+
+const SQL_NEWLINE_KW = new Set([
+  "SELECT", "FROM", "WHERE", "GROUP BY", "ORDER BY", "HAVING", "LIMIT", "OFFSET",
+  "UNION", "UNION ALL", "INSERT INTO", "VALUES", "UPDATE", "SET", "DELETE FROM",
+  "RETURNING",
+  "JOIN", "INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "FULL JOIN", "CROSS JOIN",
+  "LEFT OUTER JOIN", "RIGHT OUTER JOIN", "FULL OUTER JOIN",
+  "AND", "OR", "ON"
+]);
+
+const SQL_SPACE_BEFORE_PAREN = new Set([
+  "WHERE", "AND", "OR", "ON", "NOT", "IN", "EXISTS", "ANY", "ALL",
+  "LIKE", "BETWEEN", "VALUES", "SET", "SELECT", "FROM", "HAVING", "UNION"
+]);
+
+function sqlSplitStatements(sql) {
+  const statements = [];
+  let cur = "";
+  let i = 0;
+  const n = sql.length;
+  while (i < n) {
+    const c = sql[i];
+    if (c === "'") {
+      cur += c; i++;
+      while (i < n) {
+        if (sql[i] === "'" && sql[i + 1] === "'") { cur += "''"; i += 2; continue; }
+        if (sql[i] === "'") { cur += "'"; i++; break; }
+        cur += sql[i++];
+      }
+      continue;
+    }
+    if (c === '"') {
+      cur += c; i++;
+      while (i < n && sql[i] !== '"') cur += sql[i++];
+      if (i < n) { cur += '"'; i++; }
+      continue;
+    }
+    if (c === "-" && sql[i + 1] === "-") { while (i < n && sql[i] !== "\n") cur += sql[i++]; continue; }
+    if (c === "/" && sql[i + 1] === "*") {
+      cur += "/*"; i += 2;
+      while (i < n && !(sql[i] === "*" && sql[i + 1] === "/")) cur += sql[i++];
+      if (i < n) { cur += "*/"; i += 2; }
+      continue;
+    }
+    if (c === ";") { if (cur.trim()) statements.push(cur.trim()); cur = ""; i++; continue; }
+    cur += c;
+    i++;
+  }
+  if (cur.trim()) statements.push(cur.trim());
+  return statements;
+}
+
+function sqlBeautify(sql) {
+  const tokens = sqlCombineMulti(sqlTokenize(sql));
+  if (tokens.length === 0) return "";
+
+  const lines = [];
+  let line = "";
+  let depth = 0;
+  const parenStack = [];
+
+  const flush = () => {
+    const trimmed = line.replace(/[ \t]+$/, "");
+    if (trimmed.trim()) lines.push(trimmed);
+    line = "";
+  };
+  const getIndent = () => "  ".repeat(depth);
+
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    const prev = tokens[i - 1];
+    const upper = (t.t === "word" || t.t === "kw") ? t.v.toUpperCase() : "";
+
+    if (t.t === "comment") {
+      if (t.v.startsWith("--")) {
+        if (line.trim()) { line += " " + t.v; flush(); }
+        else { line = getIndent() + t.v; flush(); }
+      } else {
+        if (!line.trim()) line = getIndent() + t.v;
+        else line += " " + t.v;
+      }
+      continue;
+    }
+
+    if ((t.t === "word" || t.t === "kw") && SQL_NEWLINE_KW.has(upper)) {
+      if (line.trim()) flush();
+      line = getIndent() + t.v;
+      continue;
+    }
+
+    if (t.t === "punct") {
+      if (t.v === "(") {
+        let j = i + 1;
+        while (j < tokens.length && tokens[j].t === "comment") j++;
+        const after = tokens[j];
+        const isSubquery = after &&
+          (after.t === "word" || after.t === "kw") &&
+          after.v.toUpperCase() === "SELECT";
+
+        const prevUpper = (prev && (prev.t === "word" || prev.t === "kw")) ? prev.v.toUpperCase() : "";
+        const noSpace = prev &&
+          (prev.t === "word" || prev.t === "kw" || prev.t === "ident") &&
+          !SQL_SPACE_BEFORE_PAREN.has(prevUpper);
+
+        if (line === "") line = getIndent() + "(";
+        else line += (noSpace ? "" : " ") + "(";
+
+        parenStack.push(isSubquery ? "sub" : "normal");
+        depth++;
+        if (isSubquery) flush();
+        continue;
+      }
+
+      if (t.v === ")") {
+        const kind = parenStack.pop() || "normal";
+        if (kind === "sub") {
+          if (line.trim()) flush();
+          depth = Math.max(0, depth - 1);
+          line = getIndent() + ")";
+        } else {
+          depth = Math.max(0, depth - 1);
+          line = line.replace(/[ \t]+$/, "") + ")";
+        }
+        continue;
+      }
+
+      if (t.v === ",") { line = line.replace(/[ \t]+$/, "") + ","; continue; }
+      if (t.v === ".") { line = line.replace(/[ \t]+$/, "") + "."; continue; }
+
+      if (line === "") line = getIndent() + t.v;
+      else line += " " + t.v;
+      continue;
+    }
+
+    if (t.t === "op") {
+      if (line === "") line = getIndent() + t.v;
+      else line += " " + t.v;
+      continue;
+    }
+
+    let needSpace = line !== "";
+    if (prev && prev.t === "punct" && (prev.v === "(" || prev.v === ".")) needSpace = false;
+
+    if (line === "") line = getIndent() + t.v;
+    else line += (needSpace ? " " : "") + t.v;
+  }
+  flush();
+  return lines.join("\n");
+}
+
+function sqlMinify(sql) {
+  const tokens = sqlCombineMulti(sqlTokenize(sql));
+  let out = "";
+
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    const prev = tokens[i - 1];
+
+    if (t.t === "comment") {
+      if (t.v.startsWith("--")) {
+        if (out && !out.endsWith("\n")) out += " ";
+        out += t.v + "\n";
+      } else {
+        if (out && !out.endsWith("\n") && !out.endsWith("(") && !out.endsWith(".")) out += " ";
+        out += t.v;
+      }
+      continue;
+    }
+
+    const last = out.slice(-1);
+    let needSpace = out.length > 0 && last !== "\n" && last !== "(" && last !== ".";
+
+    if (t.t === "punct") {
+      if (t.v === ",") { out = out.replace(/\s+$/, "") + ","; continue; }
+      if (t.v === ";") { out = out.replace(/\s+$/, "") + ";"; continue; }
+      if (t.v === ")") { out = out.replace(/\s+$/, "") + ")"; continue; }
+      if (t.v === ".") { out = out.replace(/\s+$/, "") + "."; continue; }
+      if (t.v === "(") {
+        const prevUpper = (prev && (prev.t === "word" || prev.t === "kw")) ? prev.v.toUpperCase() : "";
+        const noSpace = prev && (prev.t === "word" || prev.t === "kw" || prev.t === "ident") && !SQL_SPACE_BEFORE_PAREN.has(prevUpper);
+        if (!noSpace && needSpace) out += " ";
+        out += "(";
+        continue;
+      }
+      if (needSpace) out += " ";
+      out += t.v;
+      continue;
+    }
+
+    if (t.t === "op") {
+      if (needSpace) out += " ";
+      out += t.v;
+      continue;
+    }
+
+    if (needSpace) out += " ";
+    out += t.v;
+  }
+
+  return out.trim();
+}
+
+const SqlCodec = {
+  parse(text) {
+    return sqlSplitStatements(String(text));
+  },
+  serialize(value, pretty) {
+    let statements;
+    if (Array.isArray(value)) statements = value.map(String);
+    else if (isPlainObject(value) && Array.isArray(value.statements)) statements = value.statements.map(String);
+    else if (isPlainObject(value) && Array.isArray(value.queries)) statements = value.queries.map(String);
+    else if (typeof value === "string") statements = [value];
+    else throw new Error("SQL: ожидается массив строк, строка или объект со свойством statements");
+
+    statements = statements.map(s => s.trim()).filter(Boolean);
+    if (statements.length === 0) return "";
+
+    if (pretty) {
+      const parts = statements.map(s => sqlBeautify(s));
+      return parts.join(";\n\n") + ";";
+    } else {
+      const parts = statements.map(s => sqlMinify(s));
+      return parts.join("; ") + ";";
+    }
+  }
+};
+
+/* ============================================================
+ *  РЕЕСТР ФОРМАТОВ
+ * ============================================================ */
+
+const FORMATS = {
+  json: { name: "JSON", parse: JsonCodec.parse, serialize: JsonCodec.serialize },
+  php:  { name: "PHP",  parse: phpParse,      serialize: phpSerialize      },
+  yaml: { name: "YAML", parse: yamlParse,     serialize: yamlSerialize     },
+  xml:  { name: "XML",  parse: xmlParse,      serialize: xmlSerialize      },
+  sql:  { name: "SQL",  parse: SqlCodec.parse, serialize: SqlCodec.serialize }
+};
+
+function convert(text, inFmt, outFmt, pretty) {
+  if (!text.trim()) return "";
+  const src = FORMATS[inFmt];
+  const dst = FORMATS[outFmt];
+  if (!src || !dst) throw new Error("Неизвестный формат");
+  const data = src.parse(text);
+  const out = dst.serialize(data, pretty);
+  return typeof out === "string" ? out : String(out);
+}
+
+/* ============================================================
+ *  ПРИМЕРЫ
+ * ============================================================ */
+
+const SAMPLES = {
+  json: `{
+  "name": "Alice",
+  "age": 30,
+  "active": true,
+  "rating": 4.85,
+  "roles": ["admin", "user"],
+  "address": {
+    "city": "Москва",
+    "zip": "101000"
+  },
+  "meta": null
+}`,
+  php: `<?php
+return [
+    'name'    => 'Alice',
+    'age'     => 30,
+    'active'  => true,
+    'rating'  => 4.85,
+    'roles'   => ['admin', 'user'],
+    'address' => [
+        'city' => 'Москва',
+        'zip'  => '101000',
+    ],
+    'meta' => null,
+];`,
+  yaml: `name: Alice
+age: 30
+active: true
+rating: 4.85
+roles:
+  - admin
+  - user
+address:
+  city: Москва
+  zip: "101000"
+meta: null`,
+  xml: `<user>
+  <name>Alice</name>
+  <age>30</age>
+  <active>true</active>
+  <rating>4.85</rating>
+  <roles>
+    <role>admin</role>
+    <role>user</role>
+  </roles>
+  <address city="Москва" zip="101000"/>
+  <meta/>
+</user>`,
+  sql: `SELECT u.id, u.name,
+       (SELECT COUNT(*) FROM orders o WHERE o.user_id = u.id) AS order_count,
+       (SELECT AVG(amount) FROM payments p WHERE p.user_id = u.id) AS avg_payment
+FROM users u
+WHERE u.active = 1
+  AND u.id IN (
+    SELECT user_id FROM subscriptions s
+    WHERE s.status = 'active'
+      AND s.expires_at > NOW()
+  )
+ORDER BY order_count DESC
+LIMIT 10;`
+};
+
+/* ============================================================
+ *  HISTORY (auto-save в localStorage)
+ * ============================================================ */
+
+const History = {
+  KEY: "df_history_v1",
+  MAX: 60,
+
+  load() {
+    try {
+      const raw = localStorage.getItem(this.KEY);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) {
+      console.warn("Не удалось загрузить историю:", e);
+      return [];
+    }
+  },
+
+  save(items) {
+    try {
+      localStorage.setItem(this.KEY, JSON.stringify(items));
+    } catch (e) {
+      console.warn("Не удалось сохранить историю:", e);
+    }
+  },
+
+  /** Дедупликация по (input + inFmt + outFmt): новый вариант вытесняет старый. */
+  add(item) {
+    let items = this.load();
+    items = items.filter(x =>
+      !(x.input === item.input && x.inFmt === item.inFmt && x.outFmt === item.outFmt)
+    );
+    items.unshift(item);
+    if (items.length > this.MAX) items = items.slice(0, this.MAX);
+    this.save(items);
+    return items;
+  },
+
+  remove(id) {
+    const items = this.load().filter(x => x.id !== id);
+    this.save(items);
+    return items;
+  },
+
+  clear() {
+    this.save([]);
+    return [];
+  }
+};
+
+/* ---------- отрисовка и логика панели истории ---------- */
+
+let historyOpen = false;
+
+function relativeTime(ts) {
+  const diff = Date.now() - ts;
+  if (diff < 30_000) return "только что";
+  if (diff < 90_000) return "минуту назад";
+  if (diff < 3_600_000) return Math.floor(diff / 60_000) + " мин назад";
+  if (diff < 86_400_000) return Math.floor(diff / 3_600_000) + " ч назад";
+  const d = new Date(ts);
+  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }) + " " +
+         d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+}
+
+function renderHistory() {
+  const items = History.load();
+  const badge = $("historyBadge");
+  const list = $("historyList");
+
+  badge.textContent = items.length;
+  badge.style.display = items.length ? "" : "none";
+
+  if (items.length === 0) {
+    list.innerHTML = '<div class="history-empty">История пуста.<br>Успешно обработанные тексты будут появляться здесь автоматически.</div>';
+    return;
+  }
+
+  list.innerHTML = "";
+  for (const it of items) {
+    const el = document.createElement("div");
+    el.className = "history-item";
+    el.dataset.id = it.id;
+
+    const fmtName = `${FORMATS[it.inFmt] ? FORMATS[it.inFmt].name : it.inFmt} → ${FORMATS[it.outFmt] ? FORMATS[it.outFmt].name : it.outFmt}`;
+    const modeLabel = it.mode === "min"
+      ? '<span class="history-mode min">MIN</span>'
+      : '<span class="history-mode">FMT</span>';
+
+    const meta = document.createElement("div");
+    meta.className = "history-meta";
+    meta.innerHTML =
+      `<span><span class="history-fmt"></span>${modeLabel}</span>` +
+      `<span class="history-time"></span>`;
+    meta.querySelector(".history-fmt").textContent = fmtName;
+    meta.querySelector(".history-time").textContent = relativeTime(it.ts);
+
+    const preview = document.createElement("div");
+    preview.className = "history-preview";
+    preview.textContent = it.input.replace(/\s+/g, " ").trim().slice(0, 120) || "(пусто)";
+
+    const del = document.createElement("button");
+    del.className = "history-del";
+    del.type = "button";
+    del.title = "Удалить из истории";
+    del.textContent = "×";
+
+    el.appendChild(meta);
+    el.appendChild(preview);
+    el.appendChild(del);
+
+    el.addEventListener("click", e => {
+      if (e.target.closest(".history-del")) return;
+      loadFromHistory(it);
+    });
+
+    del.addEventListener("click", e => {
+      e.stopPropagation();
+      History.remove(it.id);
+      renderHistory();
+    });
+
+    list.appendChild(el);
+  }
+}
+
+function loadFromHistory(it) {
+  elInput.value = it.input;
+  elInFmt.value = it.inFmt;
+  elOutFmt.value = it.outFmt;
+
+  mode = it.mode === "min" ? "min" : "pretty";
+  [...$("modeSeg").children].forEach(b =>
+    b.classList.toggle("active", b.dataset.mode === mode)
+  );
+
+  updateInfo();
+  run({ skipHistory: true });
+  closeHistory();
+  setStatus("ok", "Загружено из истории");
+}
+
+function openHistory() {
+  historyOpen = true;
+  $("historyPanel").classList.add("open");
+  renderHistory();
+}
+function closeHistory() {
+  historyOpen = false;
+  $("historyPanel").classList.remove("open");
+}
+function toggleHistory() {
+  if (historyOpen) closeHistory();
+  else openHistory();
+}
+
+/* ============================================================
+ *  UI
+ * ============================================================ */
+
+const $ = id => document.getElementById(id);
+
+const elInput   = $("input");
+const elOutput  = $("output");
+const elInFmt   = $("inFmt");
+const elOutFmt  = $("outFmt");
+const elStatus  = $("status");
+const elStatusT = $("statusText");
+const elInInfo  = $("inInfo");
+const elOutInfo = $("outInfo");
+const elAuto    = $("auto");
+
+let mode = "pretty";
+let firstRun = true;
+
+function setStatus(type, text) {
+  elStatus.className = "status" + (type ? " " + type : "");
+  elStatusT.textContent = text;
+}
+
+function updateInfo() {
+  const inLen = elInput.value.length;
+  const outLen = elOutput.value.length;
+  elInInfo.textContent = inLen ? `${inLen.toLocaleString("ru-RU")} симв.` : "";
+  elOutInfo.textContent = outLen ? `${outLen.toLocaleString("ru-RU")} симв.` : "";
+}
+
+function run(opts = {}) {
+  const text = elInput.value;
+  const inFmt = elInFmt.value;
+  const outFmt = elOutFmt.value;
+  const wasFirst = firstRun;
+  firstRun = false;
+
+  if (!text.trim()) {
+    elOutput.value = "";
+    updateInfo();
+    setStatus("", "Готово к работе");
+    return;
+  }
+
+  setStatus("busy", "Обработка…");
+
+  try {
+    const result = convert(text, inFmt, outFmt, mode === "pretty");
+    elOutput.value = result;
+    updateInfo();
+
+    const from = FORMATS[inFmt].name;
+    const to = FORMATS[outFmt].name;
+    const action = inFmt === outFmt
+      ? (mode === "pretty" ? "форматирование" : "минификация")
+      : `${from} → ${to}`;
+    setStatus("ok", `Готово · ${action} · ${result.length.toLocaleString("ru-RU")} симв.`);
+
+    /* --- авто-сохранение в историю --- */
+    if (!wasFirst && !opts.skipHistory) {
+      History.add({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+        ts: Date.now(),
+        inFmt,
+        outFmt,
+        mode,
+        input: text,
+        output: result
+      });
+      renderHistory();
+    }
+  } catch (err) {
+    setStatus("err", err && err.message ? err.message : String(err));
+    elOutput.value = "";
+    updateInfo();
+  }
+}
+
+/* ---- сегментированный переключатель ---- */
+$("modeSeg").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-mode]");
+  if (!btn) return;
+  mode = btn.dataset.mode;
+  [...e.currentTarget.children].forEach(b => b.classList.toggle("active", b === btn));
+  if (elAuto.checked || elOutput.value) run();
+});
+
+/* ---- кнопки ---- */
+$("run").addEventListener("click", run);
+
+$("copy").addEventListener("click", async () => {
+  const text = elOutput.value;
+  if (!text) { setStatus("", "Нечего копировать"); return; }
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setStatus("ok", "Скопировано в буфер обмена");
+  } catch (err) {
+    setStatus("err", "Не удалось скопировать: " + err.message);
+  }
+});
+
+$("sample").addEventListener("click", () => {
+  elInput.value = SAMPLES[elInFmt.value] || "";
+  updateInfo();
+  run();
+});
+
+$("clear").addEventListener("click", () => {
+  elInput.value = "";
+  elOutput.value = "";
+  updateInfo();
+  setStatus("", "Очищено");
+  elInput.focus();
+});
+
+$("swap").addEventListener("click", () => {
+  const a = elInFmt.value;
+  elInFmt.value = elOutFmt.value;
+  elOutFmt.value = a;
+
+  const t = elInput.value;
+  elInput.value = elOutput.value;
+  elOutput.value = t;
+
+  updateInfo();
+  setStatus("", `Форматы поменяны: ${FORMATS[elInFmt.value].name} → ${FORMATS[elOutFmt.value].name}`);
+});
+
+/* ---- история: кнопки и панель ---- */
+$("historyBtn").addEventListener("click", e => {
+  e.stopPropagation();
+  toggleHistory();
+});
+
+$("historyPanel").addEventListener("click", e => {
+  e.stopPropagation();
+});
+
+$("clearHistory").addEventListener("click", e => {
+  e.stopPropagation();
+  if (!History.load().length) { setStatus("", "История уже пуста"); return; }
+  if (confirm("Удалить всю историю без возможности восстановления?")) {
+    History.clear();
+    renderHistory();
+    setStatus("ok", "История очищена");
+  }
+});
+
+/* закрытие панели при клике вне её */
+document.addEventListener("click", e => {
+  if (!historyOpen) return;
+  if (e.target.closest(".history-wrap")) return;
+  closeHistory();
+});
+
+/* закрытие по Escape */
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && historyOpen) closeHistory();
+});
+
+/* ---- авто ---- */
+let autoTimer = null;
+function scheduleAuto() {
+  if (!elAuto.checked) return;
+  clearTimeout(autoTimer);
+  autoTimer = setTimeout(run, 350);
+}
+
+elInput.addEventListener("input", () => { updateInfo(); scheduleAuto(); });
+elOutput.addEventListener("input", updateInfo);
+
+elInFmt.addEventListener("change", () => {
+  updateInfo();
+  if (elInput.value.trim()) run();
+});
+elOutFmt.addEventListener("change", () => {
+  if (elInput.value.trim()) run();
+});
+elAuto.addEventListener("change", () => {
+  if (elAuto.checked && elInput.value.trim()) run();
+});
+
+/* ---- горячие клавиши ---- */
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); run(); }
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "c") { e.preventDefault(); $("copy").click(); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "h" && !e.shiftKey) {
+    e.preventDefault();
+    toggleHistory();
+  }
+});
+
+/* ---- Tab внутри textarea ---- */
+[elInput, elOutput].forEach(ta => {
+  ta.addEventListener("keydown", e => {
+    if (e.key === "Tab" && !e.shiftKey) {
+      e.preventDefault();
+      const s = ta.selectionStart, en = ta.selectionEnd;
+      ta.value = ta.value.slice(0, s) + "  " + ta.value.slice(en);
+      ta.selectionStart = ta.selectionEnd = s + 2;
+    }
+  });
+});
+
+/* ---- старт ---- */
+elInput.value = SAMPLES.json;
+updateInfo();
+renderHistory();
+run();      /* первый запуск — без сохранения в историю */
+elInput.focus();
+</script>
+</body>
+</html>
